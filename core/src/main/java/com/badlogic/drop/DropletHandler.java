@@ -3,6 +3,7 @@ package com.badlogic.drop;
 import com.badlogic.gdx.assets.AssetManager;
 import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
@@ -11,77 +12,71 @@ import com.badlogic.gdx.utils.TimeUtils;
 import java.util.Iterator;
 
 /**
- * Gestiona les gotes que van apareixent, caient i desapareixent. És un grup d'actors que
- * contindrà les gotes com a actors
+ * Gestiona los coches enemigos que bajan por la pista.
  */
 public class DropletHandler extends Group {
-    private long lastDropletTime; // Temps en què s'h generat la darrera gota
-    private final long DROPLET_TIME_INTERVAL = 1000000000; // Interval que transcorre entre gotes
-    // La imatge de la gota
-    private final Texture texture;
-    // El so que fa quan es recull una gota amb la galleda
-    private final Sound dropSound;
+    private long lastDropletTime;
+    private long dropletInterval = 900_000_000L; // 0.9s inicial entre coches
 
-    /**
-     * El constructor genera la primera gota i guarda l'instant de temps
-     */
+    private float elapsed = 0f; // tiempo total transcurrido
+
+    private final Texture[] enemyTextures; // Texturas de coches enemigos aleatorios
+    private final Sound explosionSound;
+
     public DropletHandler(AssetManager assetManager) {
-        texture = assetManager.get(AssetDescriptors.dropletTexture);
-        dropSound = assetManager.get(AssetDescriptors.dropSound);
+        enemyTextures = new Texture[] {
+            assetManager.get(AssetDescriptors.cocheAmarillo),
+            assetManager.get(AssetDescriptors.cocheAzul),
+            assetManager.get(AssetDescriptors.cocheBlanco),
+            assetManager.get(AssetDescriptors.cocheGris),
+            assetManager.get(AssetDescriptors.cocheGris2),
+            assetManager.get(AssetDescriptors.cocheNegro)
+        };
+        explosionSound = assetManager.get(AssetDescriptors.explosionSound);
         lastDropletTime = TimeUtils.nanoTime();
         spawnDroplet();
-
     }
 
-    /**
-     * Crea una gota si és necessari
-     * @param delta
-     */
     @Override
     public void act(float delta) {
         super.act(delta);
+        elapsed += delta;
+        // Cada 10s el intervalo entre coches se reduce un 8% (mínimo 300ms)
+        dropletInterval = Math.max(300_000_000L, (long)(900_000_000L * Math.pow(0.92, elapsed / 10f)));
         spawnDroplet();
     }
 
-    /**
-     * Comprova el tems transcorregut des de la darrera gota generada i si supera l'interval estblert
-     * se'n genera una altra
-     */
     private void spawnDroplet() {
-        if ( TimeUtils.nanoTime() - lastDropletTime > DROPLET_TIME_INTERVAL ){
+        if (TimeUtils.nanoTime() - lastDropletTime > dropletInterval) {
             lastDropletTime = TimeUtils.nanoTime();
-            Droplet droplet = new Droplet(texture);
-            // Afegim a la gota l'acció de desplaçar-se fins la part inferior de la pantalla
-            // en dos segons
-            droplet.addAction(Actions.moveTo(droplet.getX(), 0,2));
-            //Afegim la gota  la llista d'actors del grup
-            addActor(droplet);
+            // Elegir textura de coche enemigo aleatoria
+            Texture tex = enemyTextures[MathUtils.random(0, enemyTextures.length - 1)];
+            Droplet car = new Droplet(tex);
+            // La velocidad de bajada también aumenta con el tiempo (mínimo 0.8s)
+            float travelTime = Math.max(0.8f, 2.5f - elapsed * 0.025f);
+            car.addAction(Actions.moveTo(car.getX(), -Bucket.CAR_H, travelTime));
+            addActor(car);
         }
     }
 
-    /**
-     * Comprova si alguna de les gotes ha caigut a la galleda
-     * @param bucket la galleda
-     * @return cert si alguna gota ha caigut a la galleda
-     */
-    public boolean collectDroplet(Bucket bucket) {
-        boolean result = false;
+    public int[] updateAndCheck(Bucket bucket) {
+        int collisions = 0;
+        int evaded = 0;
 
-        // Obtenim l'iterador que ens servirà per a recórrer els actors
         Iterator<Actor> it = getChildren().iterator();
-
-        while ( it.hasNext()) {
-            // Fem el cast d'actor a gota
-            Droplet droplet = (Droplet) it.next();
-            if ( droplet.inBucket(bucket) ) {
-                // Si la gota ha caigut a la galleda eliminem la gota de la llista d'actors
-                removeActor(droplet);
-                result = true;
-                // Reproduim el so
-                dropSound.play();
+        while (it.hasNext()) {
+            Droplet car = (Droplet) it.next();
+            if (car.inBucket(bucket)) {
+                removeActor(car);
+                collisions++;
+                explosionSound.play();
+                continue;
+            }
+            if (car.getY() <= -Bucket.CAR_H) {
+                removeActor(car);
+                evaded++;
             }
         }
-        return result;
+        return new int[]{collisions, evaded};
     }
-
 }

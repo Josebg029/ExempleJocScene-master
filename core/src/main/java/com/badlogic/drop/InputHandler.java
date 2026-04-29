@@ -62,20 +62,7 @@ public class InputHandler implements InputProcessor {
     }
 
     @Override
-    public boolean touchDragged(int screenX, int screenY, int pointer)
-    {
-        float worldWidth = gameScreen.stage.getWidth();
-        float worldHeight = gameScreen.stage.getHeight();
-
-        // Obtenim la posició en la càmera 800x480 a partir de la posició tocada de la pantalla
-        Vector3 vector = gameScreen.stage.getCamera().unproject(new Vector3(screenX, screenY, 0));
-        float x = vector.x - 100/2;
-        // Rectifiquem en cas que la galleda surti per la dreta o esquerra de la pantalla
-        if ( x < 0 )
-            x = 0;
-        if (x > worldWidth - 100)
-            x = worldWidth-100;
-        gameScreen.bucket.setX(x);
+    public boolean touchDragged(int screenX, int screenY, int pointer) {
         return false;
     }
 

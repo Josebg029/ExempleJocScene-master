@@ -12,13 +12,14 @@ public class MainMenuScreen implements Screen {
     final Drop game;
 
     OrthographicCamera camera;
-
+    Texture background;
 
     public MainMenuScreen(final Drop game) {
         this.game = game;
 
         camera = new OrthographicCamera();
         camera.setToOrtho(false, 800, 480);
+        background = new Texture(Gdx.files.internal("Splash2.png"));
     }
 
     @Override
@@ -34,10 +35,13 @@ public class MainMenuScreen implements Screen {
         game.batch.setProjectionMatrix(game.viewport.getCamera().combined);
 
         game.batch.begin();
-        //draw text. Remember that x and y are in meters
-        game.font.draw(game.batch, "Welcome to Drop!!! ", 1, 1.5f);
-        game.font.draw(game.batch, "Tap anywhere to begin!", 1, 1);
-
+        game.batch.draw(background, 0, 0, 800, 480);
+        // Draw menu centered with good visibility
+        game.font.getData().setScale(1.8f);
+        game.font.draw(game.batch, "Welcome to F5!!!", 140, 320);
+        game.font.getData().setScale(1.3f);
+        game.font.draw(game.batch, "Tap anywhere to begin!", 120, 180);
+        game.font.getData().setScale(1.0f); // Reset
         game.batch.end();
 
         if (Gdx.input.isTouched()) {
@@ -69,7 +73,7 @@ public class MainMenuScreen implements Screen {
 
     @Override
     public void dispose() {
-
+        if (background != null) background.dispose();
     }
 
 }
